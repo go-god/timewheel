@@ -6,7 +6,7 @@
     and timed task scheduling, and the component supports smooth exit,
     which is mainly used for timed task and delayed task scheduling.
 
-[![jetbrains](timewheel.jpg "timewheel")]
+[![timewheel](timewheel.jpg "timewheel")](https://github.com/go-god)
 
 # Instructions for use
 
