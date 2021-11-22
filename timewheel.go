@@ -185,7 +185,7 @@ func (tw *TimeWheel) addTask(key string, delay time.Duration, fn Callback, opts 
 
 // RemoveTask remove task by key
 func (tw *TimeWheel) RemoveTask(key string) {
-	pos, ok := tw.keyPosMap.Load(key)
+	pos, ok := tw.keyPosMap.LoadAndDelete(key)
 	if !ok {
 		return
 	}
@@ -198,7 +198,6 @@ func (tw *TimeWheel) RemoveTask(key string) {
 		t := bucketEntry.list[i]
 		if key == t.key {
 			bucketEntry.list = append(bucketEntry.list[:i], bucketEntry.list[i+1:]...)
-			tw.keyPosMap.Delete(key)
 			return
 		}
 	}
@@ -259,6 +258,10 @@ func (tw *TimeWheel) handleTicker() {
 	tw.curPos = curPos
 	k := 0
 	execNum := len(bucketEntry.list)
+	if execNum == 0 {
+		return
+	}
+
 	for i := 0; i < execNum; i++ {
 		taskEntry := bucketEntry.list[i]
 		if taskEntry.circle > 0 {

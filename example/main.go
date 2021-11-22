@@ -58,8 +58,10 @@ func shutdown(tw *timewheel.TimeWheel, wait time.Duration) {
 
 	log.Println("exit signal: ", sig.String())
 	// Create a deadline to wait for.
-	_, cancel := context.WithTimeout(context.Background(), wait)
+	ctx, cancel := context.WithTimeout(context.Background(), wait)
 	defer cancel()
 
 	tw.Stop()
+
+	<-ctx.Done()
 }
