@@ -40,22 +40,22 @@ var (
 
 // TimeWheel time wheel
 type TimeWheel struct {
-	name            string
-	ticker          *time.Ticker
-	interval        time.Duration
-	bucketNum       int
-	buckets         []*bucket
-	perBucketPreNum int
-	curPos          int
-	keyPosMap       sync.Map
-	status          status
-	once            sync.Once
-	stopChan        chan struct{}
-	done            chan struct{}
-	recovery        func()
-	logger          Logger
-	enableShutdown  bool
-	wg              *sync.WaitGroup
+	name                 string
+	ticker               *time.Ticker
+	interval             time.Duration
+	bucketNum            int
+	buckets              []*bucket
+	perBucketPreNum      int
+	curPos               int
+	keyPosMap            sync.Map
+	status               status
+	once                 sync.Once
+	stopChan             chan struct{}
+	done                 chan struct{}
+	recovery             func()
+	logger               Logger
+	waitAllTasksFinished bool // wait all task finished when time wheel exit
+	wg                   *sync.WaitGroup
 }
 
 type bucket struct {
@@ -79,7 +79,7 @@ type task struct {
 	circle   int
 	fn       Callback
 	data     interface{}
-	schedule bool // timed schedule task
+	schedule bool // whether task is scheduled periodically
 }
 
 // New create a timeWheel
@@ -116,7 +116,7 @@ func New(interval time.Duration, bucketsNum int, opts ...Option) (*TimeWheel, er
 
 	tw.initBuckets()
 
-	if tw.enableShutdown {
+	if tw.waitAllTasksFinished {
 		tw.wg = &sync.WaitGroup{}
 	}
 
@@ -216,10 +216,10 @@ func (tw *TimeWheel) getPositionAndCircle(delay time.Duration) (pos int, circle 
 	return
 }
 
-// Stop stop timeWheel
+// Stop timeWheel stop action
 func (tw *TimeWheel) Stop() {
 	tw.once.Do(func() {
-		tw.logger.Printf("timeWheel %s recv stop action", tw.name)
+		tw.logger.Printf("timeWheel %s receive stop action", tw.name)
 		close(tw.stopChan)
 		tw.status = stop
 		<-tw.done
@@ -229,6 +229,8 @@ func (tw *TimeWheel) Stop() {
 
 func (tw *TimeWheel) start() {
 	defer tw.recovery()
+	defer tw.ticker.Stop()
+
 	tw.logger.Printf("timeWheel %s start at:%s", tw.name, time.Now().Format(tmFmtWithMS))
 
 	for {
@@ -236,8 +238,7 @@ func (tw *TimeWheel) start() {
 		case <-tw.ticker.C:
 			tw.handleTicker()
 		case <-tw.stopChan:
-			tw.ticker.Stop()
-			if tw.enableShutdown {
+			if tw.waitAllTasksFinished {
 				tw.logger.Printf("timeWheel %s will shutdown...", tw.name)
 				tw.wg.Wait()
 			}
@@ -271,13 +272,13 @@ func (tw *TimeWheel) handleTicker() {
 			continue
 		}
 
-		if tw.enableShutdown {
+		if tw.waitAllTasksFinished {
 			tw.wg.Add(1)
 		}
 
 		go func() {
 			defer tw.recovery()
-			if tw.enableShutdown {
+			if tw.waitAllTasksFinished {
 				defer tw.wg.Done()
 			}
 

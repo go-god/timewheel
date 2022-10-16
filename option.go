@@ -31,10 +31,10 @@ func WithLoggerFunc(fn func(msg string, args ...interface{})) Option {
 	}
 }
 
-// WithEnableShutdown enable shutdown
-func WithEnableShutdown() Option {
+// WithWaitAllTasksFinished wait all task finished when time wheel exit.
+func WithWaitAllTasksFinished() Option {
 	return func(tw *TimeWheel) {
-		tw.enableShutdown = true
+		tw.waitAllTasksFinished = true
 	}
 }
 

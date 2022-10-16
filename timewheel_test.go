@@ -10,7 +10,7 @@ func TestTimeWheel_AddTask(t *testing.T) {
 	tw, err := New(1*time.Second, 10,
 		WithName("test_time_wheel"),
 		WithLoggerFunc(log.Printf),
-		// WithEnableShutdown(),
+		WithWaitAllTasksFinished(),
 		WithPerBucketPreNum(100),
 	)
 
