@@ -265,9 +265,9 @@ func (tw *TimeWheel) handleTicker() {
 
 		// exec task
 		if tw.syncRunEachTask {
-			tw.syncRun(taskEntry)
+			tw.run(taskEntry)
 		} else {
-			tw.asyncRun(taskEntry)
+			go tw.run(taskEntry)
 		}
 
 		if !taskEntry.schedule {
@@ -299,16 +299,9 @@ func (tw *TimeWheel) handleTicker() {
 		tw.name, now.Unix(), end.Unix(), end.Sub(now), execNum)
 }
 
-func (tw *TimeWheel) syncRun(taskEntry *task) {
+func (tw *TimeWheel) run(taskEntry *task) {
 	defer tw.recovery()
 	taskEntry.fn(taskEntry.data)
-}
-
-func (tw *TimeWheel) asyncRun(taskEntry *task) {
-	go func() {
-		defer tw.recovery()
-		taskEntry.fn(taskEntry.data)
-	}()
 }
 
 // get the bucket capacity
