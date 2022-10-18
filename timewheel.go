@@ -40,22 +40,21 @@ var (
 
 // TimeWheel time wheel
 type TimeWheel struct {
-	name                 string
-	ticker               *time.Ticker
-	interval             time.Duration
-	bucketNum            int
-	buckets              []*bucket
-	perBucketPreNum      int
-	curPos               int
-	keyPosMap            sync.Map
-	status               status
-	once                 sync.Once
-	stopChan             chan struct{}
-	done                 chan struct{}
-	recovery             func()
-	logger               Logger
-	waitAllTasksFinished bool // wait all task finished when time wheel exit
-	wg                   *sync.WaitGroup
+	name            string
+	ticker          *time.Ticker
+	interval        time.Duration
+	bucketNum       int
+	buckets         []*bucket
+	perBucketPreNum int
+	curPos          int
+	keyPosMap       sync.Map
+	status          status
+	once            sync.Once
+	stopChan        chan struct{}
+	done            chan struct{}
+	recovery        func()
+	logger          Logger
+	syncRunEachTask bool // sync run each task
 }
 
 type bucket struct {
@@ -115,10 +114,6 @@ func New(interval time.Duration, bucketsNum int, opts ...Option) (*TimeWheel, er
 	}
 
 	tw.initBuckets()
-
-	if tw.waitAllTasksFinished {
-		tw.wg = &sync.WaitGroup{}
-	}
 
 	// start the timeWheel
 	tw.status = run
@@ -238,11 +233,7 @@ func (tw *TimeWheel) start() {
 		case <-tw.ticker.C:
 			tw.handleTicker()
 		case <-tw.stopChan:
-			if tw.waitAllTasksFinished {
-				tw.logger.Printf("timeWheel %s will shutdown...", tw.name)
-				tw.wg.Wait()
-			}
-
+			tw.logger.Printf("timeWheel %s will shutdown...", tw.name)
 			close(tw.done)
 			return
 		}
@@ -272,18 +263,12 @@ func (tw *TimeWheel) handleTicker() {
 			continue
 		}
 
-		if tw.waitAllTasksFinished {
-			tw.wg.Add(1)
+		// exec task
+		if tw.syncRunEachTask {
+			tw.syncRun(taskEntry)
+		} else {
+			tw.asyncRun(taskEntry)
 		}
-
-		go func() {
-			defer tw.recovery()
-			if tw.waitAllTasksFinished {
-				defer tw.wg.Done()
-			}
-
-			taskEntry.fn(taskEntry.data)
-		}()
 
 		if !taskEntry.schedule {
 			tw.keyPosMap.Delete(taskEntry.key)
@@ -312,6 +297,18 @@ func (tw *TimeWheel) handleTicker() {
 	end := time.Now()
 	tw.logger.Printf("timeWheel %s task begin time: %d, end time: %d, cost time: %v, exec num: %d",
 		tw.name, now.Unix(), end.Unix(), end.Sub(now), execNum)
+}
+
+func (tw *TimeWheel) syncRun(taskEntry *task) {
+	defer tw.recovery()
+	taskEntry.fn(taskEntry.data)
+}
+
+func (tw *TimeWheel) asyncRun(taskEntry *task) {
+	go func() {
+		defer tw.recovery()
+		taskEntry.fn(taskEntry.data)
+	}()
 }
 
 // get the bucket capacity

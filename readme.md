@@ -29,7 +29,7 @@ func main() {
 	tw, err := timewheel.New(1*time.Second, 10,
 		timewheel.WithName("test_time_wheel"),
 		timewheel.WithLoggerFunc(log.Printf),
-		// timewheel.WithWaitAllTasksFinished(),
+		// timewheel.WithSyncRunEachTask(),
 		timewheel.WithPerBucketPreNum(100),
 	)
 

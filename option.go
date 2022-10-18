@@ -31,10 +31,10 @@ func WithLoggerFunc(fn func(msg string, args ...interface{})) Option {
 	}
 }
 
-// WithWaitAllTasksFinished wait all task finished when time wheel exit.
-func WithWaitAllTasksFinished() Option {
+// WithSyncRunEachTask sync run each task in goroutine
+func WithSyncRunEachTask() Option {
 	return func(tw *TimeWheel) {
-		tw.waitAllTasksFinished = true
+		tw.syncRunEachTask = true
 	}
 }
 

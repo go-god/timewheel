@@ -10,7 +10,7 @@ func TestTimeWheel_AddTask(t *testing.T) {
 	tw, err := New(1*time.Second, 10,
 		WithName("test_time_wheel"),
 		WithLoggerFunc(log.Printf),
-		WithWaitAllTasksFinished(),
+		WithSyncRunEachTask(),
 		WithPerBucketPreNum(100),
 	)
 
@@ -26,6 +26,11 @@ func TestTimeWheel_AddTask(t *testing.T) {
 		log.Println(12356)
 		log.Println("data: ", data)
 	}, WithTaskSchedule(), WithTaskData("abc"))
+
+	_ = tw.AddTask("123", 1*time.Second, func(data interface{}) {
+		log.Println(12356)
+		log.Println("data: ", data)
+	}, WithTaskSchedule(), WithTaskData("123abc"))
 
 	// tw.RemoveTask("12")
 	time.Sleep(10 * time.Second)
